@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.env
+data/circolari.db
+.DS_Store
