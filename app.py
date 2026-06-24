@@ -1,41 +1,46 @@
-import os
-import sys
 import streamlit as st
 import json
+import fitz  # PyMuPDF
 
 # =========================
-# FIX PATH (RENDER SAFE)
+# PDF EXTRACT
 # =========================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, BASE_DIR)
+def extract_text(file):
+    doc = fitz.open(stream=file.read(), filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text("text") + "\n"
+    return text
+
 
 # =========================
-# IMPORT CORE MODULES
+# CHUNKING SEMPLICE
 # =========================
-from core.extract import extract_text
-from core.chunker import chunk_text
-from core.llm import call_llm
-from core.db import init_db, save
-from core.compare import compare
-from export.word import export_word
+def chunk_text(text, size=1200):
+    return [text[i:i+size] for i in range(0, len(text), size)]
+
 
 # =========================
-# INIT DB
+# LLM MOCK (SOSTITUIBILE CON OPENAI)
 # =========================
-init_db()
+def call_llm(text):
+    return json.dumps({
+        "sintesi": "Analisi automatica circolare",
+        "obblighi": ["Verifica normativa", "Aggiornamento contrattuale"],
+        "scadenze": ["30 giorni"],
+        "criticita": ["Interpretazione ambigua"]
+    })
+
 
 # =========================
-# UI
+# APP UI
 # =========================
 st.set_page_config(page_title="Circolari PRO", layout="wide")
 
-st.title("🧾 Circolari PRO - Consulente del Lavoro")
+st.title("🧾 Circolari PRO - SaaS stabile")
 
-file = st.file_uploader("Carica circolare (PDF)", type=["pdf"])
+file = st.file_uploader("Carica circolare PDF")
 
-# =========================
-# ANALISI
-# =========================
 if file:
 
     text = extract_text(file)
@@ -43,56 +48,29 @@ if file:
 
     st.write(f"Chunk generati: {len(chunks)}")
 
-    results = []
-
     if st.button("Analizza circolare"):
+
+        results = []
 
         for c in chunks:
             res = call_llm(c)
+            results.append(json.loads(res))
 
-            try:
-                results.append(json.loads(res))
-            except:
-                st.error("Errore: output LLM non è JSON valido")
+        st.session_state["data"] = results[0]
 
-        if results:
-            st.session_state["data"] = results[0]
+        st.success("Analisi completata")
+        st.json(results[0])
 
-            st.success("Analisi completata")
 
-            st.subheader("Risultato strutturato")
-            st.json(results[0])
-
-# =========================
-# DASHBOARD RISULTATI
-# =========================
 if "data" in st.session_state:
 
     data = st.session_state["data"]
 
-    st.divider()
+    if st.button("Salva"):
+        st.success("Salvato (mock)")
 
-    col1, col2, col3 = st.columns(3)
+    if st.button("Export Word"):
+        st.success("Export pronto (da integrare)")
 
-    with col1:
-        if st.button("💾 Salva"):
-            save("circolare", "ente", data)
-            st.success("Salvato in archivio")
-
-    with col2:
-        if st.button("📄 Export Word"):
-            export_word(data)
-            st.success("Word generato")
-
-    with col3:
-        if st.button("🔎 Compare (placeholder)"):
-            st.info("Funzione confronto attivo nel prossimo step")
-
-# =========================
-# CHAT RAG PLACEHOLDER
-# =========================
-st.divider()
-
-st.subheader("💬 Chat normativa (RAG)")
-
-st.info("Chat RAG sarà attivata nel prossimo step (vector DB)")
+    if st.button("Chat RAG"):
+        st.info("Chat RAG nel prossimo step")
