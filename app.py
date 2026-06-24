@@ -1,46 +1,33 @@
 import streamlit as st
 import json
-import fitz  # PyMuPDF
 
 # =========================
-# PDF EXTRACT
+# CORE IMPORT (ORA CORRETTO)
 # =========================
-def extract_text(file):
-    doc = fitz.open(stream=file.read(), filetype="pdf")
-    text = ""
-    for page in doc:
-        text += page.get_text("text") + "\n"
-    return text
-
-
-# =========================
-# CHUNKING SEMPLICE
-# =========================
-def chunk_text(text, size=1200):
-    return [text[i:i+size] for i in range(0, len(text), size)]
-
+from core.extract import extract_text
+from core.chunker import chunk_text
+from core.llm import call_llm
+from core.db import init_db, save
+from core.compare import compare
+from export.word import export_word
 
 # =========================
-# LLM MOCK (SOSTITUIBILE CON OPENAI)
+# INIT DB
 # =========================
-def call_llm(text):
-    return json.dumps({
-        "sintesi": "Analisi automatica circolare",
-        "obblighi": ["Verifica normativa", "Aggiornamento contrattuale"],
-        "scadenze": ["30 giorni"],
-        "criticita": ["Interpretazione ambigua"]
-    })
-
+init_db()
 
 # =========================
-# APP UI
+# UI
 # =========================
 st.set_page_config(page_title="Circolari PRO", layout="wide")
 
-st.title("🧾 Circolari PRO - SaaS stabile")
+st.title("🧾 Circolari PRO - Consulente del Lavoro")
 
-file = st.file_uploader("Carica circolare PDF")
+file = st.file_uploader("Carica circolare PDF", type=["pdf"])
 
+# =========================
+# PROCESSO FILE
+# =========================
 if file:
 
     text = extract_text(file)
@@ -54,23 +41,48 @@ if file:
 
         for c in chunks:
             res = call_llm(c)
-            results.append(json.loads(res))
+
+            try:
+                results.append(json.loads(res))
+            except:
+                st.error("Errore: output LLM non è JSON valido")
+                return
 
         st.session_state["data"] = results[0]
 
         st.success("Analisi completata")
         st.json(results[0])
 
-
+# =========================
+# DASHBOARD RISULTATI
+# =========================
 if "data" in st.session_state:
 
     data = st.session_state["data"]
 
-    if st.button("Salva"):
-        st.success("Salvato (mock)")
+    st.divider()
 
-    if st.button("Export Word"):
-        st.success("Export pronto (da integrare)")
+    col1, col2, col3 = st.columns(3)
 
-    if st.button("Chat RAG"):
-        st.info("Chat RAG nel prossimo step")
+    with col1:
+        if st.button("💾 Salva"):
+            save("circolare", "ente", data)
+            st.success("Salvato")
+
+    with col2:
+        if st.button("📄 Export Word"):
+            export_word(data)
+            st.success("Word generato")
+
+    with col3:
+        if st.button("🔎 Compare"):
+            st.info("Funzione confronto attualmente in sviluppo")
+
+# =========================
+# CHAT PLACEHOLDER
+# =========================
+st.divider()
+
+st.subheader("💬 Chat RAG")
+
+st.info("Funzione RAG in arrivo (fase 2)")
