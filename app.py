@@ -1,3 +1,9 @@
+import sys
+import os
+
+# FIX PATH (Render-safe)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import streamlit as st
 import json
 
@@ -48,14 +54,3 @@ if "data" in st.session_state:
 
     if st.button("Chat RAG"):
         st.write("Modalità chat da implementare sopra dataset")
-
-import os
-
-port = int(os.environ.get("PORT", 8501))
-
-if __name__ == "__main__":
-    import streamlit.web.cli as stcli
-    import sys
-
-    sys.argv = ["streamlit", "run", "app.py", "--server.port", str(port)]
-    sys.exit(stcli.main())
