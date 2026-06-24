@@ -1,18 +1,17 @@
-import sys
 import os
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, BASE_DIR)
-
 import sys
-import os
-
-# FIX PATH (Render-safe)
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 import streamlit as st
 import json
 
+# =========================
+# FIX PATH (RENDER SAFE)
+# =========================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
+
+# =========================
+# IMPORT CORE MODULES
+# =========================
 from core.extract import extract_text
 from core.chunker import chunk_text
 from core.llm import call_llm
@@ -20,43 +19,80 @@ from core.db import init_db, save
 from core.compare import compare
 from export.word import export_word
 
+# =========================
+# INIT DB
+# =========================
 init_db()
+
+# =========================
+# UI
+# =========================
+st.set_page_config(page_title="Circolari PRO", layout="wide")
 
 st.title("🧾 Circolari PRO - Consulente del Lavoro")
 
-file = st.file_uploader("Carica circolare")
+file = st.file_uploader("Carica circolare (PDF)", type=["pdf"])
 
+# =========================
+# ANALISI
+# =========================
 if file:
 
     text = extract_text(file)
     chunks = chunk_text(text)
 
+    st.write(f"Chunk generati: {len(chunks)}")
+
     results = []
 
-    if st.button("Analizza"):
+    if st.button("Analizza circolare"):
 
         for c in chunks:
             res = call_llm(c)
+
             try:
                 results.append(json.loads(res))
             except:
-                st.error("JSON non valido")
+                st.error("Errore: output LLM non è JSON valido")
 
-        st.session_state["data"] = results[0]
+        if results:
+            st.session_state["data"] = results[0]
 
-        st.success("Analisi completata")
-        st.json(results[0])
+            st.success("Analisi completata")
 
+            st.subheader("Risultato strutturato")
+            st.json(results[0])
+
+# =========================
+# DASHBOARD RISULTATI
+# =========================
 if "data" in st.session_state:
 
     data = st.session_state["data"]
 
-    if st.button("Salva"):
-        save("circolare", "ente", data)
+    st.divider()
 
-    if st.button("Export Word"):
-        export_word(data)
-        st.success("Word generato")
+    col1, col2, col3 = st.columns(3)
 
-    if st.button("Chat RAG"):
-        st.write("Modalità chat da implementare sopra dataset")
+    with col1:
+        if st.button("💾 Salva"):
+            save("circolare", "ente", data)
+            st.success("Salvato in archivio")
+
+    with col2:
+        if st.button("📄 Export Word"):
+            export_word(data)
+            st.success("Word generato")
+
+    with col3:
+        if st.button("🔎 Compare (placeholder)"):
+            st.info("Funzione confronto attivo nel prossimo step")
+
+# =========================
+# CHAT RAG PLACEHOLDER
+# =========================
+st.divider()
+
+st.subheader("💬 Chat normativa (RAG)")
+
+st.info("Chat RAG sarà attivata nel prossimo step (vector DB)")
