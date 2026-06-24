@@ -1,8 +1,21 @@
+import os
+import sys
 import streamlit as st
 import json
 
 # =========================
-# CORE IMPORT (ORA CORRETTO)
+# FIX PATH (RENDER SAFE)
+# =========================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, BASE_DIR)
+
+# =========================
+# IMPORT CONFIG
+# =========================
+from config import USE_OLLAMA, OPENAI_MODEL, OLLAMA_MODEL
+
+# =========================
+# IMPORT CORE MODULES
 # =========================
 from core.extract import extract_text
 from core.chunker import chunk_text
@@ -12,45 +25,60 @@ from core.compare import compare
 from export.word import export_word
 
 # =========================
-# INIT DB
+# INIT
 # =========================
 init_db()
 
 # =========================
-# UI
+# UI CONFIG
 # =========================
-st.set_page_config(page_title="Circolari PRO", layout="wide")
+st.set_page_config(
+    page_title="Circolari PRO SaaS",
+    layout="wide"
+)
 
 st.title("🧾 Circolari PRO - Consulente del Lavoro")
 
+st.write("Carica una circolare PDF e ottieni analisi strutturata AI.")
+
+# =========================
+# UPLOAD FILE
+# =========================
 file = st.file_uploader("Carica circolare PDF", type=["pdf"])
 
 # =========================
-# PROCESSO FILE
+# PROCESSING PIPELINE
 # =========================
 if file:
 
-    text = extract_text(file)
+    with st.spinner("Estrazione testo in corso..."):
+        text = extract_text(file)
+
     chunks = chunk_text(text)
 
-    st.write(f"Chunk generati: {len(chunks)}")
+    st.success(f"Testo estratto. Chunk generati: {len(chunks)}")
 
     if st.button("Analizza circolare"):
 
         results = []
 
-        for c in chunks:
-            res = call_llm(c)
+        with st.spinner("Analisi AI in corso..."):
 
-            try:
-                results.append(json.loads(res))
-            except:
-                st.error("Errore: output LLM non è JSON valido")
-                st.stop()
+            for c in chunks:
+                res = call_llm(c)
 
+                try:
+                    results.append(json.loads(res))
+                except:
+                    st.error("Errore: output LLM non è JSON valido")
+                    st.stop()
+
+        # salva primo risultato
         st.session_state["data"] = results[0]
 
         st.success("Analisi completata")
+
+        st.subheader("Risultato AI")
         st.json(results[0])
 
 # =========================
@@ -62,12 +90,14 @@ if "data" in st.session_state:
 
     st.divider()
 
+    st.subheader("📊 Azioni disponibili")
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("💾 Salva"):
+        if st.button("💾 Salva su DB"):
             save("circolare", "ente", data)
-            st.success("Salvato")
+            st.success("Salvato correttamente")
 
     with col2:
         if st.button("📄 Export Word"):
@@ -76,13 +106,13 @@ if "data" in st.session_state:
 
     with col3:
         if st.button("🔎 Compare"):
-            st.info("Funzione confronto attualmente in sviluppo")
+            st.info("Funzione confronto in sviluppo")
 
 # =========================
-# CHAT PLACEHOLDER
+# RAG PLACEHOLDER
 # =========================
 st.divider()
 
-st.subheader("💬 Chat RAG")
+st.subheader("💬 Chat normativa (RAG)")
 
-st.info("Funzione RAG in arrivo (fase 2)")
+st.info("Modulo RAG sarà attivato nella fase 2 del progetto")
