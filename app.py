@@ -46,7 +46,7 @@ if file:
                 results.append(json.loads(res))
             except:
                 st.error("Errore: output LLM non è JSON valido")
-                return
+                st.stop()
 
         st.session_state["data"] = results[0]
 
